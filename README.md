@@ -6,6 +6,6 @@ Static one-page site for Lion Luxury Services, luxury Mercedes Sprinter transpor
 - `assets/`: optimized photos, logo, favicon and self-hosted fonts (Cinzel, Jost)
 - `.htaccess`: caching and compression on Hostinger
 
-The quote form needs no server. It opens a prefilled text to (623) 320-8124 or an email to lionluxurytransportation@gmail.com.
+The quote form posts to FormSubmit (formsubmit.co), which emails each request to lionluxurytransportation@gmail.com. The first submission triggers a one-time activation email to that inbox.
 
 Deploys to Hostinger from the `main` branch.

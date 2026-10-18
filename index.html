@@ -193,6 +193,10 @@ form{background:rgba(20,17,13,.92);border:1px solid var(--line);border-radius:va
 .form-note{margin-top:14px;font-size:.88rem;color:var(--mist)}
 .form-error{display:none;margin-bottom:14px;padding:12px 14px;border-radius:var(--radius-sm);border:1px solid #9a4b3a;background:#2a130e;color:#f2c7bb;font-size:.95rem}
 .form-error.show{display:block}
+.form-ok{display:none;margin-top:16px;padding:14px 16px;border-radius:var(--radius-sm);border:1px solid var(--gold);background:rgba(201,162,74,.12);color:var(--ivory)}
+.form-ok.show{display:block}
+form{position:relative}
+.btn[disabled]{opacity:.6;cursor:wait}
 @media (max-width:900px){.quote .wrap{grid-template-columns:1fr;gap:40px}}
 @media (max-width:520px){.grid2{grid-template-columns:1fr;gap:0}form{padding:22px}}
 
@@ -387,7 +391,7 @@ footer ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
     <div class="wrap">
       <div>
         <h2 id="quote-h">Get your free quote</h2>
-        <p class="lede" style="margin-top:16px">Fill this in and it goes straight to our phone as a text, or to our inbox. Prefer to talk? Call anytime.</p>
+        <p class="lede" style="margin-top:16px">Tell us the plan and we will get back to you with a clear price. Prefer to talk? Call or text anytime.</p>
         <ul class="contact-list">
           <li><a href="tel:+16233208124"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>(623) 320-8124</a></li>
           <li><a href="mailto:lionluxurytransportation@gmail.com"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg>lionluxurytransportation@gmail.com</a></li>
@@ -416,11 +420,12 @@ footer ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
           </div>
         </div>
         <div class="field"><label for="f-notes">Anything else?</label><textarea id="f-notes" name="notes" placeholder="Return trip, extra stops, hours needed"></textarea></div>
+        <input type="text" name="_honey" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
         <div class="form-actions">
-          <button class="btn btn-gold" type="submit" data-via="sms">Text my request</button>
-          <button class="btn btn-ghost" type="submit" data-via="email">Email my request</button>
+          <button class="btn btn-gold" type="submit" id="sendBtn">Send my request</button>
         </div>
-        <p class="form-note">Your phone opens a message with your details filled in. Just press send.</p>
+        <p class="form-note">Your request goes straight to our inbox. We will call or text you to confirm your quote. In a hurry? <a href="tel:+16233208124" style="color:var(--gold-hi)">Call (623) 320-8124</a>.</p>
+        <div class="form-ok" id="formOk" role="status" tabindex="-1"></div>
       </form>
     </div>
   </section>
@@ -464,33 +469,41 @@ footer ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 <script>
 (function(){
   var y=document.getElementById('yr'); if(y) y.textContent=new Date().getFullYear();
-  var form=document.getElementById('quoteForm'), err=document.getElementById('formError'), via='sms';
+  var form=document.getElementById('quoteForm'), err=document.getElementById('formError'), ok=document.getElementById('formOk'), btn=document.getElementById('sendBtn');
   var d=document.getElementById('f-date'); if(d){d.min=new Date().toISOString().slice(0,10);}
-  form.querySelectorAll('button[data-via]').forEach(function(b){b.addEventListener('click',function(){via=b.dataset.via;});});
+  var ENDPOINT='https://formsubmit.co/ajax/lionluxurytransportation@gmail.com';
   form.addEventListener('submit',function(e){
     e.preventDefault();
-    var f=form.elements, missing=[];
-    [['name','your name'],['phone','a phone number'],['date','the date'],['pickup','a pickup location']].forEach(function(r){ if(!f[r[0]].value.trim()) missing.push(r[1]); });
-    if(missing.length){ err.textContent='Add '+missing.join(', ')+' so we can quote your ride.'; err.classList.add('show'); f[[ 'name','phone','date','pickup'].find(function(k){return !f[k].value.trim();})].focus(); return; }
+    var f=form.elements, req=[['name','your name'],['phone','a phone number'],['date','the date'],['pickup','a pickup location']];
+    var missing=req.filter(function(r){return !f[r[0]].value.trim();});
+    if(missing.length){ err.textContent='Add '+missing.map(function(r){return r[1];}).join(', ')+' so we can quote your ride.'; err.classList.add('show'); f[missing[0][0]].focus(); return; }
     err.classList.remove('show');
-    var lines=[
-      'Lion Luxury quote request',
-      'Name: '+f.name.value.trim(),
-      'Phone: '+f.phone.value.trim(),
-      'Date: '+f.date.value+(f.time.value?' at '+f.time.value:''),
-      'Pickup: '+f.pickup.value.trim(),
-      f.dropoff.value.trim()?'Destination: '+f.dropoff.value.trim():'',
-      f.passengers.value?'Passengers: '+f.passengers.value:'',
-      'Occasion: '+f.occasion.value,
-      f.notes.value.trim()?'Notes: '+f.notes.value.trim():''
-    ].filter(Boolean).join('\n');
-    var body=encodeURIComponent(lines);
-    if(via==='email'){
-      location.href='mailto:lionluxurytransportation@gmail.com?subject='+encodeURIComponent('Quote request: '+f.occasion.value+' on '+f.date.value)+'&body='+body;
-    } else {
-      var sep=/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)?'&':'?';
-      location.href='sms:+16233208124'+sep+'body='+body;
-    }
+    if(f._honey.value){ return; }
+    var data={
+      _subject:'New quote request: '+f.occasion.value+' on '+f.date.value+' ('+f.name.value.trim()+')',
+      _template:'table',
+      _captcha:'false',
+      Name:f.name.value.trim(),
+      Phone:f.phone.value.trim(),
+      Date:f.date.value,
+      'Pickup time':f.time.value||'Not given',
+      Pickup:f.pickup.value.trim(),
+      Destination:f.dropoff.value.trim()||'Not given',
+      Passengers:f.passengers.value||'Not given',
+      Occasion:f.occasion.value,
+      Notes:f.notes.value.trim()||'None'
+    };
+    btn.disabled=true; btn.textContent='Sending...';
+    fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(data)})
+      .then(function(r){return r.json().then(function(j){ if(!r.ok||String(j.success)!=='true') throw new Error(j.message||'failed'); });})
+      .then(function(){
+        form.reset(); ok.textContent='Request sent. We will call or text you shortly to confirm your quote.'; ok.classList.add('show'); ok.focus();
+        btn.textContent='Sent'; setTimeout(function(){btn.disabled=false;btn.textContent='Send my request';},4000);
+      })
+      .catch(function(){
+        err.innerHTML='Your request did not go through. Call or text <a href="tel:+16233208124" style="color:inherit">(623) 320-8124</a> and we will book you directly.'; err.classList.add('show');
+        btn.disabled=false; btn.textContent='Send my request';
+      });
   });
 })();
 </script>
